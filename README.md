@@ -23,8 +23,8 @@ This project uses PlatformIO.
   Main app orchestration, state machine, input handling, and layout.
 - `src/pomodoro/TimerFace.h` / `src/pomodoro/TimerFace.cpp`:
   Timer screen renderer (title, mode label, time).
-- `src/pomodoro/ConfigView.h` / `src/pomodoro/ConfigView.cpp`:
-  Configuration screen renderer (work duration).
+- `src/pomodoro/ConfigFace.h` / `src/pomodoro/ConfigFace.cpp`:
+  Configuration screen renderer (work/break durations + controls).
 - `src/ui/Component.h`:
   Base UI interface with `update` and `render`.
 - `src/ui/Button.h`:
@@ -44,9 +44,9 @@ This project uses PlatformIO.
 - Pure renderer: draws title, mode label, and remaining time.
 - Uses the shared layout scale to stay resolution-independent.
 
-### ConfigView
-- Pure renderer: draws the configuration title and current work minutes.
-- Used only on the config screen.
+### ConfigFace
+- Screen component: renders the configuration view and handles +/- controls.
+- Updates work and break durations via callbacks.
 
 ### BatteryIndicator
 - Draws a compact battery icon with five bars in the top-left corner.

@@ -9,7 +9,7 @@
 #include "../ui/App.h"
 #include "../ui/BatteryIndicator.h"
 #include "../ui/Button.h"
-#include "ConfigView.h"
+#include "ConfigFace.h"
 #include "TimerFace.h"
 
 class PomodoroApp : public ui::App {
@@ -23,6 +23,8 @@ class PomodoroApp : public ui::App {
   static constexpr uint32_t kDarkRed = 0x8000;
   static constexpr int32_t kMinWorkMinutes = 5;
   static constexpr int32_t kMaxWorkMinutes = 90;
+  static constexpr int32_t kMinBreakMinutes = 1;
+  static constexpr int32_t kMaxBreakMinutes = 30;
   static constexpr float kOrientationThreshold = 0.6f;
   static constexpr uint32_t kOrientationHoldMs = 900;
   static constexpr uint32_t kOrientationSampleMs = 200;
@@ -45,11 +47,13 @@ class PomodoroApp : public ui::App {
   void openConfig();
   void closeConfig();
   void adjustWorkMinutes(int32_t delta);
+  void adjustBreakMinutes(int32_t delta);
   void updateOrientation(ui::UiContext& ctx);
   void applyOrientation(Orientation orientation);
   void ensureLayout(M5GFX& display);
   void applyButtonLayout();
   bool consumeFullRedraw();
+  bool isConfigHotZone(const ui::UiContext& ctx) const;
 
   static SquareLayout makeSquareLayout(M5GFX& display);
   static int16_t scaleFrom240(int16_t size, int16_t value);
@@ -57,7 +61,8 @@ class PomodoroApp : public ui::App {
 
   int32_t work_minutes_ = 25;
   int32_t work_duration_ = work_minutes_ * app_time::MINUTE;
-  const int32_t break_duration_ = 5 * app_time::MINUTE;
+  int32_t break_minutes_ = 5;
+  int32_t break_duration_ = break_minutes_ * app_time::MINUTE;
   int32_t remaining_ = work_duration_;
   bool running_ = false;
   bool paused_for_config_ = false;
@@ -77,14 +82,11 @@ class PomodoroApp : public ui::App {
 
   ui::BatteryIndicator battery_indicator_;
   pomodoro::TimerFace timer_face_;
-  pomodoro::ConfigView config_view_;
+  pomodoro::ConfigFace config_face_;
 
   ui::Button start_button_;
   ui::Button reset_button_;
   ui::Button gear_button_;
-  ui::Button back_button_;
-  ui::Button minus_button_;
-  ui::Button plus_button_;
 };
 
 #endif  // POMODORO_APP_H

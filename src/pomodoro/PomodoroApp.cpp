@@ -7,16 +7,17 @@
 PomodoroApp::PomodoroApp()
     : start_button_(20, 190, 140, 40, "Iniciar", TFT_DARKGREEN, TFT_WHITE),
       reset_button_(180, 190, 140, 40, "Reiniciar", kDarkRed, TFT_WHITE),
-      gear_button_(276, 6, 38, 28, "CFG", TFT_DARKGREY, TFT_WHITE),
-      back_button_(10, 6, 70, 28, "Voltar", TFT_DARKGREY, TFT_WHITE),
-      minus_button_(40, 120, 90, 50, "-", TFT_DARKGREY, TFT_WHITE),
-      plus_button_(190, 120, 90, 50, "+", TFT_DARKGREY, TFT_WHITE) {
+      gear_button_(276, 6, 38, 28, "CFG", TFT_DARKGREY, TFT_WHITE) {
   start_button_.setOnPress([this]() { toggleRunning(); });
   reset_button_.setOnPress([this]() { reset(); });
   gear_button_.setOnPress([this]() { openConfig(); });
-  back_button_.setOnPress([this]() { closeConfig(); });
-  minus_button_.setOnPress([this]() { adjustWorkMinutes(-1); });
-  plus_button_.setOnPress([this]() { adjustWorkMinutes(1); });
+  config_face_.setOnBack([this]() { closeConfig(); });
+  config_face_.setOnWorkDelta([this](int32_t delta) {
+    adjustWorkMinutes(delta);
+  });
+  config_face_.setOnBreakDelta([this](int32_t delta) {
+    adjustBreakMinutes(delta);
+  });
 }
 
 void PomodoroApp::update(ui::UiContext& ctx) {
@@ -24,15 +25,16 @@ void PomodoroApp::update(ui::UiContext& ctx) {
   ensureLayout(ctx.display);
 
   if (screen_ == Screen::Config) {
-    back_button_.update(ctx);
-    minus_button_.update(ctx);
-    plus_button_.update(ctx);
+    config_face_.update(ctx);
     return;
   }
 
   start_button_.update(ctx);
   reset_button_.update(ctx);
   gear_button_.update(ctx);
+  if (ctx.touch.wasPressed() && isConfigHotZone(ctx)) {
+    openConfig();
+  }
 
   if (!running_) {
     return;
@@ -59,11 +61,8 @@ void PomodoroApp::render(ui::UiContext& ctx) {
   battery_indicator_.render(ctx);
 
   if (screen_ == Screen::Config) {
-    config_view_.setMinutes(work_minutes_);
-    config_view_.render(ctx);
-    back_button_.render(ctx);
-    minus_button_.render(ctx);
-    plus_button_.render(ctx);
+    config_face_.setValues(work_minutes_, break_minutes_);
+    config_face_.render(ctx);
     return;
   }
 
@@ -164,6 +163,28 @@ void PomodoroApp::adjustWorkMinutes(int32_t delta) {
   requestRender();
 }
 
+void PomodoroApp::adjustBreakMinutes(int32_t delta) {
+  int32_t next = break_minutes_ + delta;
+  if (next < kMinBreakMinutes) {
+    next = kMinBreakMinutes;
+  } else if (next > kMaxBreakMinutes) {
+    next = kMaxBreakMinutes;
+  }
+  if (next == break_minutes_) {
+    return;
+  }
+  break_minutes_ = next;
+  break_duration_ = break_minutes_ * app_time::MINUTE;
+  if (mode_ == Mode::Break) {
+    if (!running_) {
+      remaining_ = break_duration_;
+    } else if (remaining_ > break_duration_) {
+      remaining_ = break_duration_;
+    }
+  }
+  requestRender();
+}
+
 void PomodoroApp::updateOrientation(ui::UiContext& ctx) {
   if (ctx.now - last_orientation_sample_ < kOrientationSampleMs) {
     return;
@@ -249,6 +270,16 @@ bool PomodoroApp::consumeFullRedraw() {
   return value;
 }
 
+bool PomodoroApp::isConfigHotZone(const ui::UiContext& ctx) const {
+  const int16_t size = layout_.size;
+  const int16_t zone_h = scaleFrom240(size, 50);
+  const int16_t zone_w = scaleFrom240(size, 100);
+  const int16_t zone_x = layout_width_ - zone_w;
+  const int16_t zone_y = 0;
+  return ctx.touch.x >= zone_x && ctx.touch.x <= (zone_x + zone_w) &&
+         ctx.touch.y >= zone_y && ctx.touch.y <= (zone_y + zone_h);
+}
+
 void PomodoroApp::ensureLayout(M5GFX& display) {
   int16_t w = display.width();
   int16_t h = display.height();
@@ -260,7 +291,9 @@ void PomodoroApp::ensureLayout(M5GFX& display) {
   layout_ = makeSquareLayout(display);
   battery_indicator_.setLayout(layout_.x, layout_.y, layout_.size);
   timer_face_.setLayout(layout_.x, layout_.y, layout_.size);
-  config_view_.setLayout(layout_.x, layout_.y, layout_.size);
+  config_face_.setLayout(layout_.x, layout_.y, layout_.size,
+                         ui::BatteryIndicator::WidthFor(layout_.size) +
+                             scaleFrom240(layout_.size, 4));
   applyButtonLayout();
   full_redraw_ = true;
   layout_dirty_ = false;
@@ -274,8 +307,6 @@ void PomodoroApp::applyButtonLayout() {
   const int16_t button_h = scaleFrom240(size, 38);
   const int16_t button_w = (size - margin * 3) / 2;
   const int16_t button_y = size - margin - button_h;
-  const int16_t battery_w = ui::BatteryIndicator::WidthFor(size);
-  const int16_t back_gap = scaleFrom240(size, 4);
 
   const int16_t gear_x = size - margin - gear_w;
   const int16_t gear_y = margin / 2;
@@ -286,17 +317,4 @@ void PomodoroApp::applyButtonLayout() {
                           layout_.y + button_y, button_w, button_h);
   gear_button_.setBounds(layout_.x + gear_x, layout_.y + gear_y, gear_w,
                          gear_h);
-  back_button_.setBounds(layout_.x + margin + battery_w + back_gap,
-                         layout_.y + gear_y, scaleFrom240(size, 70), gear_h);
-
-  const int16_t adjust_w = scaleFrom240(size, 70);
-  const int16_t adjust_h = scaleFrom240(size, 44);
-  const int16_t adjust_y = scaleFrom240(size, 130);
-  const int16_t adjust_x_left = scaleFrom240(size, 30);
-  const int16_t adjust_x_right = size - adjust_x_left - adjust_w;
-
-  minus_button_.setBounds(layout_.x + adjust_x_left, layout_.y + adjust_y,
-                          adjust_w, adjust_h);
-  plus_button_.setBounds(layout_.x + adjust_x_right, layout_.y + adjust_y,
-                         adjust_w, adjust_h);
 }
