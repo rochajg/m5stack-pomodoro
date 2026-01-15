@@ -24,6 +24,11 @@ void PomodoroApp::update(ui::UiContext& ctx) {
   updateOrientation(ctx);
   ensureLayout(ctx.display);
 
+  if (screen_ == Screen::Welcome) {
+    maybeExitWelcome(ctx);
+    return;
+  }
+
   if (screen_ == Screen::Config) {
     config_face_.update(ctx);
     return;
@@ -56,6 +61,11 @@ void PomodoroApp::render(ui::UiContext& ctx) {
   const bool full_redraw = consumeFullRedraw();
   if (full_redraw) {
     ctx.display.clear(TFT_BLACK);
+  }
+
+  if (screen_ == Screen::Welcome) {
+    welcome_face_.render(ctx);
+    return;
   }
 
   battery_indicator_.render(ctx);
@@ -280,6 +290,19 @@ bool PomodoroApp::isConfigHotZone(const ui::UiContext& ctx) const {
          ctx.touch.y >= zone_y && ctx.touch.y <= (zone_y + zone_h);
 }
 
+void PomodoroApp::maybeExitWelcome(ui::UiContext& ctx) {
+  if (welcome_until_ == 0) {
+    welcome_until_ = ctx.now + 2000;
+  }
+  if (ctx.touch.wasPressed() || ctx.now >= welcome_until_) {
+    screen_ = Screen::Timer;
+    full_redraw_ = true;
+    requestRender();
+  } else {
+    requestRender();
+  }
+}
+
 void PomodoroApp::ensureLayout(M5GFX& display) {
   int16_t w = display.width();
   int16_t h = display.height();
@@ -294,6 +317,7 @@ void PomodoroApp::ensureLayout(M5GFX& display) {
   config_face_.setLayout(layout_.x, layout_.y, layout_.size,
                          ui::BatteryIndicator::WidthFor(layout_.size) +
                              scaleFrom240(layout_.size, 4));
+  welcome_face_.setLayout(layout_.x, layout_.y, layout_.size);
   applyButtonLayout();
   full_redraw_ = true;
   layout_dirty_ = false;

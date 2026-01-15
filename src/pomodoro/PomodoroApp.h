@@ -11,6 +11,7 @@
 #include "../ui/Button.h"
 #include "ConfigFace.h"
 #include "TimerFace.h"
+#include "WelcomeFace.h"
 
 class PomodoroApp : public ui::App {
  public:
@@ -30,7 +31,7 @@ class PomodoroApp : public ui::App {
   static constexpr uint32_t kOrientationSampleMs = 200;
 
   enum class Mode { Work, Break };
-  enum class Screen { Timer, Config };
+  enum class Screen { Welcome, Timer, Config };
   enum class Orientation { Unknown, XAxis, YAxis };
 
   struct SquareLayout {
@@ -54,6 +55,7 @@ class PomodoroApp : public ui::App {
   void applyButtonLayout();
   bool consumeFullRedraw();
   bool isConfigHotZone(const ui::UiContext& ctx) const;
+  void maybeExitWelcome(ui::UiContext& ctx);
 
   static SquareLayout makeSquareLayout(M5GFX& display);
   static int16_t scaleFrom240(int16_t size, int16_t value);
@@ -68,11 +70,12 @@ class PomodoroApp : public ui::App {
   bool paused_for_config_ = false;
   uint32_t last_tick_ = 0;
   Mode mode_ = Mode::Work;
-  Screen screen_ = Screen::Timer;
+  Screen screen_ = Screen::Welcome;
   Orientation last_orientation_ = Orientation::Unknown;
   Orientation pending_orientation_ = Orientation::Unknown;
   uint32_t pending_since_ = 0;
   uint32_t last_orientation_sample_ = 0;
+  uint32_t welcome_until_ = 0;
   int current_rotation_ = 1;
   SquareLayout layout_{0, 0, 0};
   int16_t layout_width_ = 0;
@@ -83,6 +86,7 @@ class PomodoroApp : public ui::App {
   ui::BatteryIndicator battery_indicator_;
   pomodoro::TimerFace timer_face_;
   pomodoro::ConfigFace config_face_;
+  pomodoro::WelcomeFace welcome_face_;
 
   ui::Button start_button_;
   ui::Button reset_button_;
