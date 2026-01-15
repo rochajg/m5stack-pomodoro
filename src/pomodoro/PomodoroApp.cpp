@@ -21,6 +21,7 @@ PomodoroApp::PomodoroApp()
 }
 
 void PomodoroApp::update(ui::UiContext& ctx) {
+  cycle_beep_.update(ctx);
   updateOrientation(ctx);
   ensureLayout(ctx.display);
 
@@ -50,6 +51,7 @@ void PomodoroApp::update(ui::UiContext& ctx) {
     last_tick_ += ticks * 1000;
     remaining_ -= ticks;
     if (remaining_ <= 0) {
+      cycle_beep_.trigger();
       switchMode();
     }
     requestRender();
@@ -341,4 +343,10 @@ void PomodoroApp::applyButtonLayout() {
                           layout_.y + button_y, button_w, button_h);
   gear_button_.setBounds(layout_.x + gear_x, layout_.y + gear_y, gear_w,
                          gear_h);
+
+  const int16_t adjust_w = scaleFrom240(size, 70);
+  const int16_t adjust_h = scaleFrom240(size, 44);
+  const int16_t adjust_y = scaleFrom240(size, 130);
+  const int16_t adjust_x_left = scaleFrom240(size, 30);
+  const int16_t adjust_x_right = size - adjust_x_left - adjust_w;
 }

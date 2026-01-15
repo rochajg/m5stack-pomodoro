@@ -9,6 +9,7 @@
 #include "../ui/App.h"
 #include "../ui/BatteryIndicator.h"
 #include "../ui/Button.h"
+#include "../ui/TripleBeep.h"
 #include "ConfigFace.h"
 #include "TimerFace.h"
 #include "WelcomeFace.h"
@@ -56,7 +57,6 @@ class PomodoroApp : public ui::App {
   bool consumeFullRedraw();
   bool isConfigHotZone(const ui::UiContext& ctx) const;
   void maybeExitWelcome(ui::UiContext& ctx);
-
   static SquareLayout makeSquareLayout(M5GFX& display);
   static int16_t scaleFrom240(int16_t size, int16_t value);
   int16_t scale(int16_t value) const;
@@ -84,6 +84,7 @@ class PomodoroApp : public ui::App {
   bool full_redraw_ = true;
 
   ui::BatteryIndicator battery_indicator_;
+  ui::TripleBeep cycle_beep_;
   pomodoro::TimerFace timer_face_;
   pomodoro::ConfigFace config_face_;
   pomodoro::WelcomeFace welcome_face_;
